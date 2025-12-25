@@ -75,3 +75,12 @@ It's because Python cannot verify the SSL certificate from https://api.daily.co 
 This issue occurs when the system doesn't have the proper CA certificates.
 
 Install SSL Certificates (macOS): `/Applications/Python\ 3.12/Install\ Certificates.command`
+
+
+# TODO
+- PDF upload and load to context                  5/10
+- Language interchange                            5/10
+- Display raw gemini talk                         0/10
+- Separate from thinking and raw conversation.    0/10
+- Score the user answer                           0/10
+- Integration                                     0/10
