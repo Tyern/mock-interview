@@ -31,8 +31,9 @@ Run the bot using::
 """
 
 import os
-
+import argparse
 import asyncio
+
 from dotenv import load_dotenv
 from loguru import logger
 from PIL import Image
@@ -60,6 +61,7 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams, DailyTransport
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
+from pdf_helper import get_pdf_context
 
 load_dotenv(override=True)
 
@@ -161,7 +163,24 @@ async def run_bot(transport: BaseTransport):
                 "Hãy đặt từng câu hỏi một."
                 "Không đưa ra gợi ý."
                 "Đánh giá câu trả lời xem có phù hợp chưa."
-        },
+                """
+Sử dụng CV của ứng viên để định hướng việc lựa chọn câu hỏi.
+Hỏi về các dự án, kỹ năng và những quyết định được đề cập trong CV.
+Đánh giá khả năng hiểu và lập luận, không kiểm tra khả năng ghi nhớ.
+Không đọc lại nội dung CV thành tiếng."""
+
+        }, {
+            "role": "system",
+            "content": get_pdf_context("assets/siboudouki-sample.pdf") # TODO
+        }, 
+        {
+            "role": "system",# TODO
+            "content": f"""
+University Information:
+- University: Nagoya University
+- Program: AI
+"""
+        }
     ]
 
     # Set up conversation context and management
