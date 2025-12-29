@@ -62,6 +62,12 @@ Select your preferred bot by running the corresponding bot.py file:
    uv run bot-openai.py --transport daily
    ```
 
+4. Run dev server:
+   ```
+   LOCAL_RUN=1 python server.py
+   ```
+
+
 ## Troubleshooting
 
 If you encounter this error:
@@ -83,4 +89,4 @@ Install SSL Certificates (macOS): `/Applications/Python\ 3.12/Install\ Certifica
 - Display raw gemini talk                         0/10 *
 - Separate from thinking and raw conversation.    0/10 *
 - Score the user answer                           0/10
-- Integration                                     0/10
+- Integration                                     8/10

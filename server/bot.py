@@ -17,7 +17,7 @@ from pipecat.audio.vad.vad_analyzer import VADParams
 
 from pipecat.transports.daily.transport import DailyParams, DailyTransport
 from pipecatcloud.agent import DailySessionArguments
-from run_bot_gemini import run_bot as main
+from bot_gemini import run_bot as main
 
 load_dotenv(override=True)
 

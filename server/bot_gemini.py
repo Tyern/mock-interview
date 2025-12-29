@@ -42,19 +42,13 @@ from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnal
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import (
-    BotStartedSpeakingFrame,
-    BotStoppedSpeakingFrame,
-    Frame,
     LLMRunFrame,
-    OutputImageRawFrame,
-    SpriteFrame,
 )
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import LLMContextAggregatorPair
-from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi import RTVIObserver, RTVIProcessor
 from pipecat.runner.types import DailyRunnerArguments, RunnerArguments, SmallWebRTCRunnerArguments
 from pipecat.services.google.gemini_live.llm import GeminiLiveLLMService
@@ -64,6 +58,7 @@ from pipecat.transports.daily.transport import DailyParams, DailyTransport
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pdf_helper import get_pdf_context
+from ta_helper import quiet_frame, talking_frame, TalkingAnimation
 
 TAVUS = False
 
@@ -90,56 +85,6 @@ def merge_summaries(old: str, new: str) -> str:
     if not old:
         return new
     return old + " | " + new
-
-# Load sequential animation frames
-for i in range(1, 26):
-    # Build the full path to the image file
-    full_path = os.path.join(script_dir, f"assets/robot0{i}.png")
-    # Get the filename without the extension to use as the dictionary key
-    # Open the image and convert it to bytes
-    with Image.open(full_path) as img:
-        sprites.append(OutputImageRawFrame(image=img.tobytes(), size=img.size, format=img.format))
-
-# Create a smooth animation by adding reversed frames
-flipped = sprites[::-1]
-sprites.extend(flipped)
-
-# Define static and animated states
-quiet_frame = sprites[0]  # Static frame for when bot is listening
-talking_frame = SpriteFrame(images=sprites)  # Animation sequence for when bot is talking
-
-
-class TalkingAnimation(FrameProcessor):
-    """Manages the bot's visual animation states.
-
-    Switches between static (listening) and animated (talking) states based on
-    the bot's current speaking status.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._is_talking = False
-
-    async def process_frame(self, frame: Frame, direction: FrameDirection):
-        """Process incoming frames and update animation state.
-
-        Args:
-            frame: The incoming frame to process
-            direction: The direction of frame flow in the pipeline
-        """
-        await super().process_frame(frame, direction)
-
-        # Switch to talking animation when bot starts speaking
-        if isinstance(frame, BotStartedSpeakingFrame):
-            if not self._is_talking:
-                await self.push_frame(talking_frame)
-                self._is_talking = True
-        # Return to static frame when bot stops speaking
-        elif isinstance(frame, BotStoppedSpeakingFrame):
-            await self.push_frame(quiet_frame)
-            self._is_talking = False
-
-        await self.push_frame(frame, direction)
 
 
 async def run_bot(transport: BaseTransport):
@@ -229,79 +174,85 @@ async def run_bot(transport: BaseTransport):
 
         @rtvi.event_handler("on_client_ready")
         async def on_client_ready(rtvi):
+            logger.info("on_client_ready")
+            
             await rtvi.set_bot_ready()
             # Kick off the conversation
             await task.queue_frames([LLMRunFrame()])
         
-        @rtvi.event_handler("before_llm_run")
-        async def inject_state(rtvi):
-            context.messages = context.messages[-6:]  # keep last 3 turns
-            # Remove old state injections
-            context.messages = [
-                m for m in context.messages if m.get("role") != "system_state"
-            ]
-
-            # Inject structured state
-            context.messages.append({
-                "role": "system",
-                "name": "system_state",
-                "content": (
-                    "Interview state:\n"
-                    f"- Question index: {interview_state['question_index']}\n"
-                    f"- Previous score: {interview_state['previous_score']}\n"
-                    f"- Weaknesses: {', '.join(interview_state['weaknesses'])}\n"
-                )
-            })
+        # @rtvi.event_handler("before_llm_run")
+        # async def inject_state(rtvi):
+        #     logger.info("inject_state")
             
-        @rtvi.event_handler("on_llm_response")
-        async def on_llm_response(rtvi, text):
-            score = 0.5  # TODO: your logic
-            interview_state["scores"].append(score)
+        #     context.messages = context.messages[-6:]  # keep last 3 turns
+        #     # Remove old state injections
+        #     context.messages = [
+        #         m for m in context.messages if m.get("role") != "system_state"
+        #     ]
+
+        #     # Inject structured state
+        #     context.messages.append({
+        #         "role": "system",
+        #         "name": "system_state",
+        #         "content": (
+        #             "Interview state:\n"
+        #             f"- Question index: {interview_state['question_index']}\n"
+        #             f"- Previous score: {interview_state['previous_score']}\n"
+        #             f"- Weaknesses: {', '.join(interview_state['weaknesses'])}\n"
+        #         )
+        #     })
+            
+        # @rtvi.event_handler("on_llm_response")
+        # async def on_llm_response(rtvi, text):
+        #     logger.info("on_llm_response")
+        #     score = 0.5  # TODO: your logic
+        #     interview_state["scores"].append(score)
                 
-            summary = summarize_answer(text)
+        #     summary = summarize_answer(text)
 
-            interview_memory["summary"] = merge_summaries(
-                interview_memory["summary"],
-                summary,
-            )
+        #     interview_memory["summary"] = merge_summaries(
+        #         interview_memory["summary"],
+        #         summary,
+        #     )
 
-            interview_memory["question_index"] += 1
+        #     interview_memory["question_index"] += 1
             
-        @rtvi.event_handler("before_llm_run")
-        async def rebuild_context(rtvi):
-            context.messages = [
-                {
-                    "role": "system",
-                    "content": (
-                        "Bạn là người phỏng vấn thử nghiêm khắc."
-                        "Hãy đặt từng câu hỏi một."
-                        "Không đưa ra gợi ý."
-                        "Đánh giá câu trả lời xem có phù hợp chưa."
-                    )
-                },
-                {
-                    "role": "system",
-                    "content": (
-                        f"Interview summary so far: "
-                        f"{interview_memory['summary']}"
-                    ),
-                },
-                {
-                    "role": "system",
-                    "content": (
-                        f"Current question index: "
-                        f"{interview_memory['question_index']}"
-                    ),
-                },
-                {
-                    "role": "system",
-                    "content": (
-                        f"Interview state: "
-                        f"question={interview_state['question_index']}, "
-                        f"scores={interview_state['scores']}"
-                    )
-                }
-            ]
+        # @rtvi.event_handler("before_llm_run")
+        # async def rebuild_context(rtvi):
+        #     logger.info("rebuild_context")
+        #     context.messages = [
+        #         {
+        #             "role": "system",
+        #             "content": (
+        #                 "Bạn là người phỏng vấn thử nghiêm khắc."
+        #                 "Hãy đặt từng câu hỏi một."
+        #                 "Không đưa ra gợi ý."
+        #                 "Đánh giá câu trả lời xem có phù hợp chưa."
+        #             )
+        #         },
+        #         {
+        #             "role": "system",
+        #             "content": (
+        #                 f"Interview summary so far: "
+        #                 f"{interview_memory['summary']}"
+        #             ),
+        #         },
+        #         {
+        #             "role": "system",
+        #             "content": (
+        #                 f"Current question index: "
+        #                 f"{interview_memory['question_index']}"
+        #             ),
+        #         },
+        #         {
+        #             "role": "system",
+        #             "content": (
+        #                 f"Interview state: "
+        #                 f"question={interview_state['question_index']}, "
+        #                 f"scores={interview_state['scores']}"
+        #             )
+        #         }
+        #     ]
 
         @transport.event_handler("on_client_connected")
         async def on_client_connected(transport, client):
@@ -316,51 +267,3 @@ async def run_bot(transport: BaseTransport):
 
         await runner.run(task)
 
-
-async def bot(runner_args: RunnerArguments):
-    """Main bot entry point."""
-
-    transport = None
-
-    match runner_args:
-        case DailyRunnerArguments():
-            transport = DailyTransport(
-                runner_args.room_url,
-                runner_args.token,
-                "Pipecat Bot",
-                params=DailyParams(
-                    audio_in_enabled=True,
-                    audio_out_enabled=True,
-                    video_out_enabled=True,
-                    video_out_width=1024,
-                    video_out_height=576,
-                    vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
-                    turn_analyzer=LocalSmartTurnAnalyzerV3(),
-                ),
-            )
-        case SmallWebRTCRunnerArguments():
-            webrtc_connection: SmallWebRTCConnection = runner_args.webrtc_connection
-
-            transport = SmallWebRTCTransport(
-                webrtc_connection=webrtc_connection,
-                params=TransportParams(
-                    audio_in_enabled=True,
-                    audio_out_enabled=True,
-                    video_out_enabled=True,
-                    video_out_width=1024,
-                    video_out_height=576,
-                    vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
-                    turn_analyzer=LocalSmartTurnAnalyzerV3(),
-                ),
-            )
-        case _:
-            logger.error(f"Unsupported runner arguments type: {type(runner_args)}")
-            return
-
-    await run_bot(transport)
-
-
-if __name__ == "__main__":
-    from pipecat.runner.run import main
-
-    main()
