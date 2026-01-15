@@ -59,24 +59,16 @@ from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pdf_helper import get_pdf_context
 from ta_helper import quiet_frame, talking_frame, TalkingAnimation
+from prompt_helper import prompt_dict
 
+LANG = 'ja'
+sys_prompt, next_question_prompt, message_prompt = prompt_dict[LANG]
 TAVUS = False
 
 load_dotenv(override=True)
 
 sprites = []
 script_dir = os.path.dirname(__file__)
-interview_state = {
-    "question_index": 0,
-    "scores": [],
-    "weaknesses": [],
-}
-interview_memory = {
-    "summary": "",
-    "question_index": 0,
-    "strengths": [],
-    "weaknesses": [],
-}
 
 def summarize_answer(text: str) -> str:
     return text[:200]  # replace with smarter logic
@@ -86,6 +78,46 @@ def merge_summaries(old: str, new: str) -> str:
         return new
     return old + " | " + new
 
+class InterviewState:
+    def __init__(self):
+        self.question_index = 0
+        self.scores = []
+        self.weaknesses = []
+
+class InterviewMemory:
+    def __init__(self):
+        self.summary = ""
+        
+class InterviewController:
+    def __init__(self, state: InterviewState, memory: InterviewMemory):
+        self.state = state
+        self.memory = memory
+
+    def build_system_prompt(self) -> str:
+        return (
+            sys_prompt + \
+            f"Interview state:\n"
+            f"- Question index: {self.state.question_index}\n"
+            f"- Scores: {self.state.scores}\n"
+            f"- Weaknesses: {', '.join(self.state.weaknesses)}\n\n"
+            f"Interview summary so far:\n"
+            f"{self.memory.summary}\n"
+        )
+
+    def next_question(self) -> str:
+        questions = next_question_prompt
+        return questions[self.state.question_index % len(questions)]
+    
+def evaluate_answer(text: str) -> float:
+    if len(text.split()) < 20:
+        return 0.3
+    if "because" in text.lower():
+        return 0.7
+    return 0.5
+        
+state = InterviewState()
+memory = InterviewMemory()
+controller = InterviewController(state, memory)
 
 async def run_bot(transport: BaseTransport):
     """Main bot execution function.
@@ -115,15 +147,7 @@ async def run_bot(transport: BaseTransport):
         messages = [
             {
                 "role": "user",
-                "content":  
-                    "Bạn là người phỏng vấn thử."
-                    "Đánh giá câu trả lời xem có phù hợp chưa."
-                    "Trước tiên hỏi ứng viên giới thiệu bản thân, và tăng dần độ khó."
-                    "Sử dụng CV của ứng viên để định hướng việc lựa chọn câu hỏi."
-                    "Về các dự án, kỹ năng và những quyết định được đề cập trong CV."
-                    "Đánh giá khả năng hiểu và lập luận, không kiểm tra khả năng ghi nhớ."
-                    "Không đọc lại nội dung CV thành tiếng. Không đưa ra gợi ý."
-                    "Hỏi từng câu hỏi một, bằng tiếng Việt."
+                "content": message_prompt
             }, {
                 "role": "system",
                 "content": get_pdf_context("assets/siboudouki-sample.pdf") # TODO
@@ -179,80 +203,6 @@ async def run_bot(transport: BaseTransport):
             await rtvi.set_bot_ready()
             # Kick off the conversation
             await task.queue_frames([LLMRunFrame()])
-        
-        # @rtvi.event_handler("before_llm_run")
-        # async def inject_state(rtvi):
-        #     logger.info("inject_state")
-            
-        #     context.messages = context.messages[-6:]  # keep last 3 turns
-        #     # Remove old state injections
-        #     context.messages = [
-        #         m for m in context.messages if m.get("role") != "system_state"
-        #     ]
-
-        #     # Inject structured state
-        #     context.messages.append({
-        #         "role": "system",
-        #         "name": "system_state",
-        #         "content": (
-        #             "Interview state:\n"
-        #             f"- Question index: {interview_state['question_index']}\n"
-        #             f"- Previous score: {interview_state['previous_score']}\n"
-        #             f"- Weaknesses: {', '.join(interview_state['weaknesses'])}\n"
-        #         )
-        #     })
-            
-        # @rtvi.event_handler("on_llm_response")
-        # async def on_llm_response(rtvi, text):
-        #     logger.info("on_llm_response")
-        #     score = 0.5  # TODO: your logic
-        #     interview_state["scores"].append(score)
-                
-        #     summary = summarize_answer(text)
-
-        #     interview_memory["summary"] = merge_summaries(
-        #         interview_memory["summary"],
-        #         summary,
-        #     )
-
-        #     interview_memory["question_index"] += 1
-            
-        # @rtvi.event_handler("before_llm_run")
-        # async def rebuild_context(rtvi):
-        #     logger.info("rebuild_context")
-        #     context.messages = [
-        #         {
-        #             "role": "system",
-        #             "content": (
-        #                 "Bạn là người phỏng vấn thử nghiêm khắc."
-        #                 "Hãy đặt từng câu hỏi một."
-        #                 "Không đưa ra gợi ý."
-        #                 "Đánh giá câu trả lời xem có phù hợp chưa."
-        #             )
-        #         },
-        #         {
-        #             "role": "system",
-        #             "content": (
-        #                 f"Interview summary so far: "
-        #                 f"{interview_memory['summary']}"
-        #             ),
-        #         },
-        #         {
-        #             "role": "system",
-        #             "content": (
-        #                 f"Current question index: "
-        #                 f"{interview_memory['question_index']}"
-        #             ),
-        #         },
-        #         {
-        #             "role": "system",
-        #             "content": (
-        #                 f"Interview state: "
-        #                 f"question={interview_state['question_index']}, "
-        #                 f"scores={interview_state['scores']}"
-        #             )
-        #         }
-        #     ]
 
         @transport.event_handler("on_client_connected")
         async def on_client_connected(transport, client):
