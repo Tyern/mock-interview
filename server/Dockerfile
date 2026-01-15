@@ -1,5 +1,9 @@
 FROM dailyco/pipecat-base:latest
 
+# Open port 7860 for http service
+ENV FAST_API_PORT=7860
+EXPOSE 7860
+
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
 
@@ -15,5 +19,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Copy the application code
 COPY ./assets assets
 # Select the bot implementation by uncommenting the appropriate line
-COPY ./bot-openai.py bot.py
+COPY \*.py .
 # COPY ./bot-gemini.py bot.py
+CMD LOCAL_RUN=1 uv run server.py --port ${FAST_API_PORT}

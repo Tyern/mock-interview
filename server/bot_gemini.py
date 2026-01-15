@@ -60,8 +60,9 @@ from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 from pdf_helper import get_pdf_context
 from ta_helper import quiet_frame, talking_frame, TalkingAnimation
 from prompt_helper import prompt_dict
+from google.genai import types
 
-LANG = 'ja'
+LANG = 'vi'
 sys_prompt, next_question_prompt, message_prompt = prompt_dict[LANG]
 TAVUS = False
 
@@ -131,9 +132,13 @@ async def run_bot(transport: BaseTransport):
 
     # Initialize the Gemini Live model
     async with aiohttp.ClientSession() as session:
+        grounding_tool = types.Tool(
+            google_search=types.GoogleSearch()
+        )
         llm = GeminiLiveLLMService(
             api_key=os.getenv("GOOGLE_API_KEY"),
             voice_id="Charon" if not TAVUS else "Aoede",  # Aoede, Charon, Fenrir, Kore, Puck
+            tools=[grounding_tool],
         )
         if TAVUS:
             ta = TavusVideoService(
