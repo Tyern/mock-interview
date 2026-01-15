@@ -37,6 +37,16 @@ ja_message_prompt = "あなたは模擬面接の面接官です。" + \
                     "CVの内容を声に出して読み上げないでください。ヒントも与えないでください。" + \
                     "質問は一問ずつ、日本語で行ってください。"
 
+
+test_sys_prompt = "Bạn là người phỏng vấn thử nghiêm khắc.\n" + \
+            "Hãy đặt từng câu hỏi một.\n" + \
+            "Không đưa ra gợi ý.\n" + \
+            "Đánh giá câu trả lời xem có phù hợp chưa.\n\n"
+test_next_question_prompt = []            
+test_message_prompt = "Hỏi từng câu hỏi một, bằng tiếng Việt."
+                    
+                    
 prompt_dict = {'vi': [vi_sys_prompt, vi_next_question_prompt, vi_message_prompt],
-               'ja': [ja_sys_prompt, ja_next_question_prompt, ja_message_prompt]
+               'ja': [ja_sys_prompt, ja_next_question_prompt, ja_message_prompt],
+               'test': [test_sys_prompt, test_next_question_prompt, test_message_prompt],
                }
