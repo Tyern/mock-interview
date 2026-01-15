@@ -1,9 +1,10 @@
-FROM dailyco/pipecat-base:latest
+FROM python:3.11
 
 # Open port 7860 for http service
 ENV FAST_API_PORT=7860
 EXPOSE 7860
 
+COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /bin/uv
 # Enable bytecode compilation
 ENV UV_COMPILE_BYTECODE=1
 
