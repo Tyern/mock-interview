@@ -82,6 +82,12 @@ This issue occurs when the system doesn't have the proper CA certificates.
 
 Install SSL Certificates (macOS): `/Applications/Python\ 3.12/Install\ Certificates.command`
 
+# Deploy
+```
+docker build -t mock-interview .
+docker run  -p 7860:7860 --env-file .env mock-interview
+```
+
 
 # TODO
 - PDF upload and load to context                  5/10 *
