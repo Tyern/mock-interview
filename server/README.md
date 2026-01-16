@@ -2,24 +2,6 @@
 
 A Pipecat server-side bot that connects to a Pipecat client, enabling a user to talk to the bot through their browser or mobile device.
 
-## Available Bots
-
-The server supports two bot implementations:
-
-1. **OpenAI Bot**
-
-   - Uses gpt-4o for conversation
-   - Requires `OPENAI_API_KEY`
-
-2. **Gemini Bot**
-   - Uses Google's Gemini model
-   - Requires `GOOGLE_API_KEY`
-
-Select your preferred bot by running the corresponding bot.py file:
-
-- `bot-openai.py` for OpenAI
-- `bot-gemini.py` for Gemini
-
 ## Setup
 
 1. Configure environment variables
@@ -56,31 +38,15 @@ Select your preferred bot by running the corresponding bot.py file:
    uv sync
    ```
 
-3. Run the bot:
-
-   ```bash
-   uv run bot-openai.py --transport daily
+3. Run dev server:
    ```
-
-## Troubleshooting
-
-If you encounter this error:
-
-```bash
-aiohttp.client_exceptions.ClientConnectorCertificateError: Cannot connect to host api.daily.co:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1000)')]
-```
-
-It's because Python cannot verify the SSL certificate from https://api.daily.co when making a POST request to create a room or token.
-
-This issue occurs when the system doesn't have the proper CA certificates.
-
-Install SSL Certificates (macOS): `/Applications/Python\ 3.12/Install\ Certificates.command`
+   uv run server.py
+   ```
 
 
 # TODO
 - PDF upload and load to context                  5/10 *
 - Language interchange                            5/10
-- Display raw gemini talk                         0/10 *
-- Separate from thinking and raw conversation.    0/10 *
 - Score the user answer                           0/10
-- Integration                                     0/10
+- Integration                                     10/10
+- Web search tool                                 10/10
