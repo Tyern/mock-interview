@@ -22,7 +22,7 @@ from bot_gemini import run_bot as main
 load_dotenv(override=True)
 
 # Check if we're in local development mode
-LOCAL = os.getenv("LOCAL_RUN")
+# LOCAL = os.getenv("LOCAL_RUN")
 
 logger.remove()
 logger.add(sys.stderr, level="DEBUG")
@@ -93,7 +93,7 @@ async def local_daily():
 
 
 # Local development entry point
-if LOCAL and __name__ == "__main__":
+if __name__ == "__main__":
     try:
         asyncio.run(local_daily())
     except Exception as e:

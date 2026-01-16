@@ -1,5 +1,6 @@
 FROM python:3.11
 
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 # Open port 7860 for http service
 ENV FAST_API_PORT=7860
 EXPOSE 7860
