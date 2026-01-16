@@ -62,6 +62,12 @@ Select your preferred bot by running the corresponding bot.py file:
    uv run bot-openai.py --transport daily
    ```
 
+4. Run dev server:
+   ```
+   LOCAL_RUN=1 python server.py
+   ```
+
+
 ## Troubleshooting
 
 If you encounter this error:
@@ -76,6 +82,29 @@ This issue occurs when the system doesn't have the proper CA certificates.
 
 Install SSL Certificates (macOS): `/Applications/Python\ 3.12/Install\ Certificates.command`
 
+# Deploy
+
+## Docker
+```
+# docker build -t mock-interview .
+# docker run  -p 7860:7860 --env-file .env mock-interview
+
+docker buildx build --platform linux/amd64 -t tyern/mock-interview:v2 --push .
+```
+
+## Modal
+```
+
+modal secret create secrets DAILY_API_KEY=... GOOGLE_API_KEY=...
+modal deploy server_modal.py
+```
+
+- Add .env.production
+- In your client directory `cd ../client/react` , install Vercel's CLI tool: `npm install -g vercel`
+- Verify it's installed using `vercel --version`
+- Log in your Vercel account using `vercel login`
+- Deploy your client to Vercel using `vercel`
+
 
 # TODO
 - PDF upload and load to context                  5/10 *
@@ -83,4 +112,4 @@ Install SSL Certificates (macOS): `/Applications/Python\ 3.12/Install\ Certifica
 - Display raw gemini talk                         0/10 *
 - Separate from thinking and raw conversation.    0/10 *
 - Score the user answer                           0/10
-- Integration                                     0/10
+- Integration                                     8/10
