@@ -36,6 +36,22 @@ A Pipecat server-side bot that connects to a Pipecat client, enabling a user to 
    uv python pin 3.11
    rm -rf .venv
    uv sync
+
+   brew install mysql
+   #---
+   mysql -u root -p
+   CREATE DATABASE interview_app;
+
+   USE interview_app;
+
+   CREATE TABLE candidates (
+      id VARCHAR(64) PRIMARY KEY,
+      name VARCHAR(255),
+      department VARCHAR(100),
+      institution_name VARCHAR(100),
+      cv_path TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
    ```
 
 3. Run dev server:
@@ -73,3 +89,4 @@ modal deploy server_modal.py
 - Score the user answer                           0/10
 - Integration                                     10/10
 - Web search tool                                 10/10
+

@@ -32,6 +32,12 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from pipecat.transports.daily.utils import DailyRESTHelper, DailyRoomParams
+from fastapi import UploadFile, File, Form
+from pydantic import BaseModel
+import shutil
+import uuid
+from typing import Optional, List
+
 
 # Load environment variables from .env file
 load_dotenv(override=True)
@@ -45,7 +51,29 @@ bot_procs = {}
 # Store Daily API helpers
 daily_helpers = {}
 
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:password@localhost/test")
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+        
+import mysql.connector
 
+def get_db_connection():
+    return mysql.connector.connect(
+        host=os.getenv("MYSQL_HOST", "localhost"),
+        user=os.getenv("MYSQL_USER", "root"),
+        password=os.getenv("MYSQL_PASSWORD", "password"),
+        database=os.getenv("MYSQL_DB", "interview_app")
+    )
+    
+class CandidateInfo(BaseModel):
+    name: Optional[str] = None
+    department: Optional[str] = None
+    institution_name: Optional[str] = None
+
+class ConnectRequest(BaseModel):
+    user_id: str
+
+        
 def cleanup():
     """Cleanup function to terminate all bot processes.
 
@@ -109,46 +137,46 @@ async def create_room_and_token() -> tuple[str, str]:
     return room.url, token
 
 
-@app.get("/")
-async def start_agent(request: Request):
-    """Endpoint for direct browser access to the bot.
+# @app.get("/")
+# async def start_agent(request: Request):
+#     """Endpoint for direct browser access to the bot.
 
-    Creates a room, starts a bot instance, and redirects to the Daily room URL.
+#     Creates a room, starts a bot instance, and redirects to the Daily room URL.
 
-    Returns:
-        RedirectResponse: Redirects to the Daily room URL
+#     Returns:
+#         RedirectResponse: Redirects to the Daily room URL
 
-    Raises:
-        HTTPException: If room creation, token generation, or bot startup fails
-    """
-    print("Creating room")
-    room_url, token = await create_room_and_token()
-    print(f"Room URL: {room_url}")
+#     Raises:
+#         HTTPException: If room creation, token generation, or bot startup fails
+#     """
+#     print("Creating room")
+#     room_url, token = await create_room_and_token()
+#     print(f"Room URL: {room_url}")
 
-    # Check if there is already an existing process running in this room
-    num_bots_in_room = sum(
-        1 for proc in bot_procs.values() if proc[1] == room_url and proc[0].poll() is None
-    )
-    if num_bots_in_room >= MAX_BOTS_PER_ROOM:
-        raise HTTPException(status_code=500, detail=f"Max bot limit reached for room: {room_url}")
+#     # Check if there is already an existing process running in this room
+#     num_bots_in_room = sum(
+#         1 for proc in bot_procs.values() if proc[1] == room_url and proc[0].poll() is None
+#     )
+#     if num_bots_in_room >= MAX_BOTS_PER_ROOM:
+#         raise HTTPException(status_code=500, detail=f"Max bot limit reached for room: {room_url}")
 
-    # Spawn a new bot process
-    try:
-        proc = subprocess.Popen(
-            [f"python3 bot.py -u {room_url} -t {token}"],
-            shell=True,
-            bufsize=1,
-            cwd=os.path.dirname(os.path.abspath(__file__)),
-        )
-        bot_procs[proc.pid] = (proc, room_url)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start subprocess: {e}")
+#     # Spawn a new bot process
+#     try:
+#         proc = subprocess.Popen(
+#             [f"python3 bot.py -u {room_url} -t {token}"],
+#             shell=True,
+#             bufsize=1,
+#             cwd=os.path.dirname(os.path.abspath(__file__)),
+#         )
+#         bot_procs[proc.pid] = (proc, room_url)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Failed to start subprocess: {e}")
 
-    return RedirectResponse(room_url)
+#     return RedirectResponse(room_url)
 
 
 @app.post("/connect")
-async def rtvi_connect(request: Request) -> Dict[Any, Any]:
+async def rtvi_connect(req: ConnectRequest) -> Dict[Any, Any]:
     """RTVI connect endpoint that creates a room and returns connection credentials.
 
     This endpoint is called by RTVI clients to establish a connection.
@@ -159,6 +187,7 @@ async def rtvi_connect(request: Request) -> Dict[Any, Any]:
     Raises:
         HTTPException: If room creation, token generation, or bot startup fails
     """
+    user_id = req.user_id
     print("Creating room for RTVI connection")
     room_url, token = await create_room_and_token()
     print(f"Room URL: {room_url}")
@@ -166,7 +195,13 @@ async def rtvi_connect(request: Request) -> Dict[Any, Any]:
     # Start the bot process
     try:
         proc = subprocess.Popen(
-            [f"python3 -m bot -u {room_url} -t {token}"],
+            [f"python3 bot.py -u {room_url} -t {token} -b '{{\"user_id\":\"{user_id}\"}}'"],
+            # ["python3",
+            #     "-m", "bot",
+            #     "-u", room_url,
+            #     "-t", token,
+            #     "-b", f'{{"user_id":"{req.user_id}"}}'
+            # ],
             shell=True,
             bufsize=1,
             cwd=os.path.dirname(os.path.abspath(__file__)),
@@ -204,6 +239,104 @@ def get_status(pid: int):
     return JSONResponse({"bot_id": pid, "status": status})
 
 
+# Upload CV and interview info endpoint implementation
+
+@app.post("/upload_cv")
+async def upload_cv(
+    user_id: str = Form(...),
+    file: UploadFile = File(...)
+):
+
+    try:
+        ext = file.filename.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
+        path = os.path.join(UPLOAD_DIR, filename)
+
+        with open(path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO candidates (id, cv_path)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE cv_path=%s
+            """,
+            (user_id, path, path),
+        )
+
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "cv_path": path,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/new_candidate")
+async def new_candidate(info: CandidateInfo):
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    user_id = uuid.uuid4().hex
+    cursor.execute(
+        """
+        INSERT INTO candidates (id, name, department, institution_name)
+        VALUES (%s,%s,%s,%s)
+        ON DUPLICATE KEY UPDATE
+            name=%s,
+            department=%s,
+            institution_name=%s
+        """,
+        (
+            user_id,
+            info.name,
+            info.department,
+            info.institution_name,
+            info.name,
+            info.department,
+            info.institution_name,
+        ),
+    )
+
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return {"status": "updated", "user_id": user_id}
+
+@app.get("/candidate/{user_id}")
+async def get_candidate(user_id: str):
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(
+        "SELECT * FROM candidates WHERE id=%s",
+        (user_id,),
+    )
+
+    result = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return result
+    
 if __name__ == "__main__":
     import uvicorn
 

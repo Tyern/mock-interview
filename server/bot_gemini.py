@@ -61,6 +61,7 @@ from pdf_helper import get_pdf_context
 from ta_helper import quiet_frame, talking_frame, TalkingAnimation
 from prompt_helper import prompt_dict
 from google.genai import types
+import mysql.connector
 
 LANG = 'vi'
 sys_prompt, next_question_prompt, message_prompt = prompt_dict[LANG]
@@ -78,6 +79,30 @@ def merge_summaries(old: str, new: str) -> str:
     if not old:
         return new
     return old + " | " + new
+
+
+def load_candidate_data(user_id):
+
+    conn = mysql.connector.connect(
+        host=os.getenv("MYSQL_HOST", "localhost"),
+        user=os.getenv("MYSQL_USER", "root"),
+        password=os.getenv("MYSQL_PASSWORD", "password"),
+        database=os.getenv("MYSQL_DB", "interview_app"),
+    )
+
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute(
+        "SELECT * FROM candidates WHERE id=%s",
+        (user_id,)
+    )
+
+    data = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return data
 
 class InterviewState:
     def __init__(self):
@@ -120,7 +145,7 @@ state = InterviewState()
 memory = InterviewMemory()
 controller = InterviewController(state, memory)
 
-async def run_bot(transport: BaseTransport):
+async def run_bot(transport: BaseTransport, user_id: str):
     """Main bot execution function.
 
     Sets up and runs the bot pipeline including:
@@ -129,9 +154,12 @@ async def run_bot(transport: BaseTransport):
     - Animation processing
     - RTVI event handling
     """
-
+    logger.info(f"Running bot for user_id={user_id}")
+    candidate = load_candidate_data(user_id)
+    
     # Initialize the Gemini Live model
     async with aiohttp.ClientSession() as session:
+
         grounding_tool = types.Tool(
             google_search=types.GoogleSearch()
         )
@@ -148,6 +176,8 @@ async def run_bot(transport: BaseTransport):
             )
         else:
             ta = TalkingAnimation()
+            
+        cv_text = get_pdf_context(candidate["cv_path"])
         
         messages = [
             {
@@ -155,14 +185,15 @@ async def run_bot(transport: BaseTransport):
                 "content": message_prompt
             }, {
                 "role": "system",
-                "content": get_pdf_context("assets/siboudouki-sample.pdf") # TODO
+                "content": cv_text
             }, 
             {
                 "role": "system",# TODO
                 "content": f"""
-    University Information:
-    - University: Nagoya University
-    - Program: AI
+    Candidate Information:
+    Name: {candidate["name"]}
+    Department: {candidate["department"]}
+    Institution Name: {candidate["institution_name"]}
     """
             }
         ]

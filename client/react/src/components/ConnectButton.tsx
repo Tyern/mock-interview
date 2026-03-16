@@ -9,7 +9,11 @@ import {
 // for the Pipecat Cloud deployed agent
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
-export function ConnectButton() {
+type ConnectButtonProps = {
+  userId: string;
+};
+
+export function ConnectButton({ userId }: ConnectButtonProps) {
   const client = usePipecatClient();
   const transportState = usePipecatClientTransportState();
   const isConnected = ['connected', 'ready'].includes(transportState);
@@ -26,7 +30,7 @@ export function ConnectButton() {
       } else {
         await client.startBotAndConnect({
           endpoint: `${API_BASE_URL}/connect`,
-          requestData: { foo: 'bar' },
+          requestData: { user_id: userId },
         });
       }
     } catch (error) {

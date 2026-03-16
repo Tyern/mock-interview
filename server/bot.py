@@ -7,6 +7,8 @@
 import asyncio
 import os
 import sys
+import argparse
+import json
 
 import aiohttp
 from dotenv import load_dotenv
@@ -20,6 +22,12 @@ from pipecatcloud.agent import DailySessionArguments
 from bot_gemini import run_bot as main
 
 load_dotenv(override=True)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-b", "--body", type=str, default="{}")
+args, _ = parser.parse_known_args()
+body = json.loads(args.body)
+user_id = body.get("user_id")
 
 # Check if we're in local development mode
 # LOCAL = os.getenv("LOCAL_RUN")
@@ -39,6 +47,8 @@ async def bot(args: DailySessionArguments):
     from pipecat.audio.filters.krisp_filter import KrispFilter
 
     logger.info(f"Bot process initialized {args.room_url} {args.token}")
+    logger.info(f"Running bot for user {user_id}")
+    
     async with aiohttp.ClientSession() as session:
         transport = DailyTransport(
             args.room_url,
@@ -57,7 +67,7 @@ async def bot(args: DailySessionArguments):
         )
 
         try:
-            await main(transport)
+            await main(transport, user_id)
             logger.info("Bot process completed")
         except Exception as e:
             logger.exception(f"Error in bot process: {str(e)}")
@@ -71,7 +81,9 @@ async def local_daily():
 
     try:
         async with aiohttp.ClientSession() as session:
-            (room_url, token) = await configure(session)
+            room_url, token = await configure(session)
+            logger.info(f"Starting local bot with room_url={room_url}, token={token}, user_id={user_id}")
+                
             transport = DailyTransport(
                 room_url,
                 token,
@@ -87,7 +99,7 @@ async def local_daily():
                 ),
             )
 
-            await main(transport)
+            await main(transport, user_id)
     except Exception as e:
         logger.exception(f"Error in local development mode: {e}")
 
