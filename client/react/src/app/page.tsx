@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 const LANGUAGES = [
-  { value: 'en', label: 'English' },
   { value: 'ja', label: 'Japanese' },
   { value: 'vi', label: 'Vietnamese' },
 ];
@@ -14,7 +13,7 @@ export default function CandidatePage() {
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
   const [institution, setInstitution] = useState('');
-  const [lang, setLang] = useState('en');
+  const [lang, setLang] = useState('ja');
   const [userId, setUserId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
 
@@ -73,7 +72,7 @@ export default function CandidatePage() {
       method: 'POST',
       body: form,
     });
-  router.push(`/interview?user_id=${data.user_id}`); 
+  router.push(`/interview?user_id=${data.user_id}&lang=vi`); 
   }
 
   return (
@@ -134,7 +133,9 @@ export default function CandidatePage() {
           <button onClick={uploadCV}>Upload CV</button>
         </>
       )}
-      <button onClick={uploadSample}>Upload Sample CV</button>
+      <div>
+        <button onClick={uploadSample}>Upload Sample CV</button>
+      </div>
     </div>
   );
 }

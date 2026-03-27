@@ -44,9 +44,9 @@ test_sys_prompt = "Bạn là người phỏng vấn thử nghiêm khắc.\n" + \
             "Đánh giá câu trả lời xem có phù hợp chưa.\n\n"
 test_next_question_prompt = []            
 test_message_prompt = "Hỏi từng câu hỏi một, bằng tiếng Việt."
-                    
-                    
-prompt_dict = {'vi': [vi_sys_prompt, vi_next_question_prompt, vi_message_prompt],
-               'ja': [ja_sys_prompt, ja_next_question_prompt, ja_message_prompt],
-               'test': [test_sys_prompt, test_next_question_prompt, test_message_prompt],
-               }
+
+prompt_dict = {
+    'vi': [vi_sys_prompt, vi_next_question_prompt, vi_message_prompt],
+    'ja': [ja_sys_prompt, ja_next_question_prompt, ja_message_prompt],
+    'test': [test_sys_prompt, test_next_question_prompt, test_message_prompt],
+}

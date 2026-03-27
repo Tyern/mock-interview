@@ -73,9 +73,9 @@ sys_prompt, next_question_prompt, message_prompt = prompt_dict[lang]
 logger.remove()
 logger.add(sys.stderr, level="DEBUG")
 
-
 sprites = []
 script_dir = os.path.dirname(__file__)
+faq_text = get_pdf_context(os.path.join(script_dir, "assets", "STULINK_FrequentQuestions.pdf"))
 
 def summarize_answer(text: str) -> str:
     return text[:200]  # replace with smarter logic
@@ -191,9 +191,11 @@ async def run_bot(transport: BaseTransport, user_id: str, lang: str):
             }, {
                 "role": "system",
                 "content": cv_text
-            }, 
-            {
-                "role": "system",# TODO
+            }, {
+                "role": "system",
+                "content": f"Frequently Asked Interview Questions:\n{faq_text}"
+            }, {
+                "role": "system",
                 "content": f"""
     Candidate Information:
     Name: {candidate["name"]}
