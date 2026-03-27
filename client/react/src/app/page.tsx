@@ -3,14 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
-
+const LANGUAGES = [
+  { value: 'en', label: 'English' },
+  { value: 'ja', label: 'Japanese' },
+  { value: 'vi', label: 'Vietnamese' },
+];
 export default function CandidatePage() {
   const router = useRouter();
 
   const [name, setName] = useState('');
   const [department, setDepartment] = useState('');
   const [institution, setInstitution] = useState('');
-
+  const [lang, setLang] = useState('en');
   const [userId, setUserId] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
 
@@ -41,7 +45,35 @@ export default function CandidatePage() {
       body: form,
     });
 
-    router.push(`/interview?user_id=${userId}`);
+    router.push(`/interview?user_id=${userId}&lang=${lang}`);
+  }
+
+  async function uploadSample() {
+    const fileRes = await fetch('/sample_cv3.pdf');
+    const fileBlob = await fileRes.blob();
+    const sampleFile = new File([fileBlob], 'sample_cv3.pdf', { type: 'application/pdf' });
+
+    const res = await fetch(`${API_BASE_URL}/new_candidate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          "name": "Alexander Martensson",
+          "department": "Artificial Intelligence",
+          "institution_name": "Tokyo University",
+        }),
+      });
+    const data = await res.json();
+
+    setUserId(data.user_id);
+    const form = new FormData();
+    form.append('user_id', data.user_id);
+    form.append('file', sampleFile);
+
+    await fetch(`${API_BASE_URL}/upload_cv`, {
+      method: 'POST',
+      body: form,
+    });
+  router.push(`/interview?user_id=${data.user_id}`); 
   }
 
   return (
@@ -72,6 +104,21 @@ export default function CandidatePage() {
         />
       </div>
 
+      <div>
+        <label htmlFor="lang-select">Interview Language: </label>
+        <select
+          id="lang-select"
+          value={lang}
+          onChange={(e) => setLang(e.target.value)}
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <button onClick={createCandidate}>Save Candidate</button>
 
       {userId && (
@@ -87,6 +134,7 @@ export default function CandidatePage() {
           <button onClick={uploadCV}>Upload CV</button>
         </>
       )}
+      <button onClick={uploadSample}>Upload Sample CV</button>
     </div>
   );
 }

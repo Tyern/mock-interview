@@ -72,8 +72,8 @@ class CandidateInfo(BaseModel):
 
 class ConnectRequest(BaseModel):
     user_id: str
+    lang: str | None = None
 
-        
 def cleanup():
     """Cleanup function to terminate all bot processes.
 
@@ -188,6 +188,10 @@ async def rtvi_connect(req: ConnectRequest) -> Dict[Any, Any]:
         HTTPException: If room creation, token generation, or bot startup fails
     """
     user_id = req.user_id
+    lang = req.lang
+    if lang is None:
+        lang = "vi"
+    
     print("Creating room for RTVI connection")
     room_url, token = await create_room_and_token()
     print(f"Room URL: {room_url}")
@@ -195,7 +199,7 @@ async def rtvi_connect(req: ConnectRequest) -> Dict[Any, Any]:
     # Start the bot process
     try:
         proc = subprocess.Popen(
-            [f"python3 bot.py -u {room_url} -t {token} -b '{{\"user_id\":\"{user_id}\"}}'"],
+            [f"python3 bot.py -u {room_url} -t {token} -b '{{\"user_id\":\"{user_id}\", \"lang\":\"{lang}\"}}'"],
             # ["python3",
             #     "-m", "bot",
             #     "-u", room_url,

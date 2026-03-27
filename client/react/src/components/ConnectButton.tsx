@@ -11,9 +11,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
 type ConnectButtonProps = {
   userId: string;
+  lang: string | null;
 };
 
-export function ConnectButton({ userId }: ConnectButtonProps) {
+export function ConnectButton({ userId, lang }: ConnectButtonProps) {
   const client = usePipecatClient();
   const transportState = usePipecatClientTransportState();
   const isConnected = ['connected', 'ready'].includes(transportState);
@@ -30,7 +31,7 @@ export function ConnectButton({ userId }: ConnectButtonProps) {
       } else {
         await client.startBotAndConnect({
           endpoint: `${API_BASE_URL}/connect`,
-          requestData: { user_id: userId },
+          requestData: { user_id: userId, lang: lang},
         });
       }
     } catch (error) {

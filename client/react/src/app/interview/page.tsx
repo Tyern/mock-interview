@@ -27,6 +27,8 @@ function BotVideo() {
 export default function Home() {
   const searchParams = useSearchParams();
   const userId = searchParams.get('user_id');
+  const language = searchParams.get('lang');
+
   if (!userId) {
     return <div>Missing user_id. Please register first.</div>;
   }
@@ -35,7 +37,7 @@ export default function Home() {
     <div className="app">
       <div className="status-bar">
         <StatusDisplay />
-        <ConnectButton userId={userId} />
+        <ConnectButton userId={userId} lang={language}/>
       </div>
 
       <div className="main-content">
