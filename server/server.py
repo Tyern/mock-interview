@@ -210,7 +210,7 @@ async def rtvi_connect(req: ConnectRequest) -> Dict[Any, Any]:
             bufsize=1,
             cwd=os.path.dirname(os.path.abspath(__file__)),
         )
-        bot_procs[proc.pid] = (proc, room_url)
+        bot_procs[user_id] = (proc, room_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to start subprocess: {e}")
 
@@ -218,12 +218,12 @@ async def rtvi_connect(req: ConnectRequest) -> Dict[Any, Any]:
     return {"room_url": room_url, "token": token}
 
 
-@app.get("/status/{pid}")
-def get_status(pid: int):
+@app.get("/status/{user_id}")
+def get_status(user_id: str):
     """Get the status of a specific bot process.
 
     Args:
-        pid (int): Process ID of the bot
+        user_id (str): user id
 
     Returns:
         JSONResponse: Status information for the bot
@@ -232,15 +232,15 @@ def get_status(pid: int):
         HTTPException: If the specified bot process is not found
     """
     # Look up the subprocess
-    proc = bot_procs.get(pid)
+    proc = bot_procs.get(user_id)
 
     # If the subprocess doesn't exist, return an error
     if not proc:
-        raise HTTPException(status_code=404, detail=f"Bot with process id: {pid} not found")
+        raise HTTPException(status_code=404, detail=f"Bot with process user_id: {user_id} not found")
 
     # Check the status of the subprocess
     status = "running" if proc[0].poll() is None else "finished"
-    return JSONResponse({"bot_id": pid, "status": status})
+    return JSONResponse({"user_id": user_id, "status": status})
 
 
 # Upload CV and interview info endpoint implementation

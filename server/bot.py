@@ -73,6 +73,7 @@ sys_prompt, next_question_prompt, message_prompt = prompt_dict[lang]
 logger.remove()
 logger.add(sys.stderr, level="DEBUG")
 
+BOT_SURVIVE_LIMIT = 660 # 11 min (s)
 sprites = []
 script_dir = os.path.dirname(__file__)
 faq_text = get_pdf_context(os.path.join(script_dir, "assets", "STULINK_FrequentQuestions.pdf"))
@@ -258,7 +259,11 @@ async def run_bot(transport: BaseTransport, user_id: str, lang: str):
 
         runner = PipelineRunner(handle_sigint=False)
 
-        await runner.run(task)
+        try:
+            await asyncio.wait_for(runner.run(task), timeout=BOT_SURVIVE_LIMIT)  # 600s = 10 minutes
+        except asyncio.TimeoutError:
+            logger.info("⏰ Timeout reached (10 minutes). Shutting down...")
+            await task.cancel()
 
 async def bot(args: DailySessionArguments):
     """Main bot entry point compatible with the FastAPI route handler.
