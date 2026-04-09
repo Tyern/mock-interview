@@ -47,7 +47,7 @@ export function ConnectButton({ userId, lang }: ConnectButtonProps) {
         disabled={
           !client || ['connecting', 'disconnecting'].includes(transportState)
         }>
-        {isConnected ? 'Disconnect' : 'Connect'}
+        {isConnected ? 'End Interview' : 'Start Interview'}
       </button>
     </div>
   );
