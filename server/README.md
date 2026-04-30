@@ -52,6 +52,19 @@ A Pipecat server-side bot that connects to a Pipecat client, enabling a user to 
       cv_path TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
    );
+
+   CREATE TABLE IF NOT EXISTS interview_evaluations (
+      user_id VARCHAR(255) NOT NULL PRIMARY KEY,
+      overall_score INT,
+      communication_score INT,
+      technical_score INT,
+      confidence_score INT,
+      summary TEXT,
+      strengths JSON,
+      areas_for_improvement JSON,
+      recommendation ENUM('hire', 'consider', 'reject'),
+      created_at DATETIME
+   );
    ```
 
 3. Run dev server:

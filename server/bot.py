@@ -183,7 +183,41 @@ Respond ONLY with a JSON object, no markdown, no preamble:
         )
 
         evaluation = json.loads(response.text)
-        logger.info(f"Evaluation for {user_id}: {json.dumps(evaluation, indent=2)}")
+        print("@@ evaluation", response.text)
+        # Save to MySQL
+        conn = mysql.connector.connect(
+            host=os.getenv("MYSQL_HOST", "localhost"),
+            user=os.getenv("MYSQL_USER", "root"),
+            password=os.getenv("MYSQL_PASSWORD", "password"),
+            database=os.getenv("MYSQL_DB", "interview_app"),
+        )
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO interview_evaluations (
+                user_id,
+                overall_score,
+                communication_score,
+                technical_score,
+                confidence_score,
+                summary,
+                strengths,
+                areas_for_improvement,
+                recommendation,
+                created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        """, (
+            user_id,
+            evaluation.get("overall_score"),
+            evaluation.get("communication_score"),
+            evaluation.get("technical_score"),
+            evaluation.get("confidence_score"),
+            evaluation.get("summary"),
+            json.dumps(evaluation.get("strengths", []), ensure_ascii=False),
+            json.dumps(evaluation.get("areas_for_improvement", []), ensure_ascii=False),
+            evaluation.get("recommendation"),
+        ))
+        conn.commit()
+        logger.info(f"Evaluation saved to DB for user_id={user_id}")
         return evaluation
 
     except Exception as e:
@@ -319,17 +353,6 @@ async def run_bot(transport: BaseTransport, user_id: str, lang: str):
             evaluation = await evaluate_candidate(
                 user_id, user_transcript, llm_transcript
             )
-            if evaluation:
-                output_path = f"evaluations/{user_id}.json"
-                os.makedirs("evaluations", exist_ok=True)
-                with open(output_path, "w") as f:
-                    json.dump({
-                        "user_id": user_id,
-                        "user_transcript": user_transcript,
-                        "llm_transcript": llm_transcript,
-                        "evaluation": evaluation
-                    }, f, ensure_ascii=False, indent=2)
-                logger.info(f"Evaluation saved to evaluations/{user_id}.json")
 
 async def bot(args: DailySessionArguments):
     """Main bot entry point compatible with the FastAPI route handler.

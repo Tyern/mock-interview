@@ -51,7 +51,6 @@ bot_procs = {}
 # Store Daily API helpers
 daily_helpers = {}
 
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:password@localhost/test")
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
         
@@ -105,10 +104,10 @@ async def lifespan(app: FastAPI):
 
 
 # Initialize FastAPI app with lifespan manager
-app = FastAPI(lifespan=lifespan)
+fastapi_app = FastAPI(lifespan=lifespan)
 
 # Configure CORS to allow requests from any origin
-app.add_middleware(
+fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -137,7 +136,7 @@ async def create_room_and_token() -> tuple[str, str]:
     return room.url, token
 
 
-# @app.get("/")
+# @fastapi_app.get("/")
 # async def start_agent(request: Request):
 #     """Endpoint for direct browser access to the bot.
 
@@ -175,7 +174,7 @@ async def create_room_and_token() -> tuple[str, str]:
 #     return RedirectResponse(room_url)
 
 
-@app.post("/connect")
+@fastapi_app.post("/connect")
 async def rtvi_connect(req: ConnectRequest) -> Dict[Any, Any]:
     """RTVI connect endpoint that creates a room and returns connection credentials.
 
@@ -218,7 +217,7 @@ async def rtvi_connect(req: ConnectRequest) -> Dict[Any, Any]:
     return {"room_url": room_url, "token": token}
 
 
-@app.get("/status/{user_id}")
+@fastapi_app.get("/status/{user_id}")
 def get_status(user_id: str):
     """Get the status of a specific bot process.
 
@@ -245,7 +244,7 @@ def get_status(user_id: str):
 
 # Upload CV and interview info endpoint implementation
 
-@app.post("/upload_cv")
+@fastapi_app.post("/upload_cv")
 async def upload_cv(
     user_id: str = Form(...),
     file: UploadFile = File(...)
@@ -286,7 +285,7 @@ async def upload_cv(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/new_candidate")
+@fastapi_app.post("/new_candidate")
 async def new_candidate(info: CandidateInfo):
 
     conn = get_db_connection()
@@ -320,7 +319,7 @@ async def new_candidate(info: CandidateInfo):
 
     return {"status": "updated", "user_id": user_id}
 
-@app.get("/candidate/{user_id}")
+@fastapi_app.get("/candidate/{user_id}")
 async def get_candidate(user_id: str):
 
     conn = get_db_connection()
@@ -357,7 +356,7 @@ if __name__ == "__main__":
 
     # Start the FastAPI server
     uvicorn.run(
-        "server:app",
+        "server:fastapi_app",
         host=config.host,
         port=config.port,
         reload=config.reload,
